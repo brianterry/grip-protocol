@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/brianterry/grip-protocol/spec/schemas/primitives/schema-request.json",
+  "title": "grip.schema Request/Response",
+  "description": "Schemas for the grip.schema primitive — fetches live resource schema and state.",
+  "definitions": {
+    "SchemaRequest": {
+      "type": "object",
+      "description": "Request to fetch the resource type schema and optionally the live state of a specific resource instance.",
+      "properties": {
+        "resourceType": {
+          "type": "string",
+          "description": "Cloud resource type in provider-canonical format.",
+          "examples": ["AWS::S3::Bucket"]
+        },
+        "resourceId": {
+          "type": ["string", "null"],
+          "description": "Resource identifier. If provided, live state is fetched in addition to the schema."
+        },
+        "region": {
+          "type": "string",
+          "description": "Cloud provider region."
+        }
+      },
+      "required": ["resourceType", "region"]
+    },
+    "SchemaResponse": {
+      "type": "object",
+      "description": "Response containing the resource schema, live state, relationship edges, and metadata.",
+      "properties": {
+        "resourceType": {
+          "type": "string",
+          "description": "The resource type that was queried."
+        },
+        "resourceSchema": {
+          "type": "object",
+          "description": "The resource type schema containing property definitions, types, and constraints."
+        },
+        "primaryIdentifiers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "JSON pointer paths to the primary identifier properties.",
+          "examples": [["/properties/BucketName"]]
+        },
+        "relationships": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "propertyPath": { "type": "string" },
+              "referencedResourceType": { "type": "string" }
+            },
+            "required": ["propertyPath", "referencedResourceType"]
+          },
+          "description": "Relationship edges to other resource types, extracted from schema $ref values."
+        },
+        "liveState": {
+          "type": ["object", "null"],
+          "description": "Current property values of the resource instance. Null if no resourceId was provided or if the resource was not found."
+        },
+        "propertyCount": {
+          "type": "integer",
+          "description": "Number of properties defined in the resource schema."
+        }
+      },
+      "required": ["resourceType", "resourceSchema", "propertyCount"]
+    }
+  }
+}

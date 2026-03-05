@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/brianterry/grip-protocol/spec/schemas/hypothesis.json",
+  "title": "Hypothesis",
+  "description": "A structured security hypothesis formed in the HYPOTHESIZE step of the GRIP loop. Represents a falsifiable claim about a resource's security posture pending verification.",
+  "type": "object",
+  "properties": {
+    "resourceType": {
+      "type": "string",
+      "description": "The cloud resource type under evaluation, in provider-canonical format.",
+      "examples": ["AWS::S3::Bucket", "AWS::EC2::Instance", "AWS::IAM::Role"]
+    },
+    "operation": {
+      "type": "string",
+      "enum": ["CREATE", "DETECT", "REMEDIATE"],
+      "description": "The operation type. DETECT evaluates existing resources for misconfigurations. CREATE validates proposed configurations before provisioning. REMEDIATE proposes corrective changes for verified findings."
+    },
+    "resourceId": {
+      "type": ["string", "null"],
+      "description": "Identifier of the specific resource instance. Required for DETECT and REMEDIATE operations. Null for CREATE operations where the resource does not yet exist.",
+      "examples": ["my-bucket", "i-1234567890abcdef0", "MyServiceRole"]
+    },
+    "properties": {
+      "type": "object",
+      "description": "Resource properties relevant to this hypothesis. For CREATE, these are the proposed properties. For DETECT, this may be empty (live state is fetched in the GROUND step).",
+      "default": {}
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of the security claim being tested.",
+      "examples": ["Detect security issues in AWS::S3::Bucket/my-bucket"]
+    }
+  },
+  "required": ["resourceType", "operation"],
+  "additionalProperties": false
+}

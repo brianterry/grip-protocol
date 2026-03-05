@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/brianterry/grip-protocol/spec/schemas/primitives/graph-request.json",
+  "title": "grip.graph Request/Response",
+  "description": "Schemas for the grip.graph primitive — resource relationship traversal. Status: interface defined in v0.1, reference implementation in development.",
+  "definitions": {
+    "GraphRequest": {
+      "type": "object",
+      "description": "Request to traverse resource relationships starting from a given resource.",
+      "properties": {
+        "resourceType": {
+          "type": "string",
+          "description": "The starting resource type.",
+          "examples": ["AWS::EC2::Instance"]
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "The starting resource identifier.",
+          "examples": ["i-1234567890abcdef0"]
+        },
+        "traversalDepth": {
+          "type": "integer",
+          "description": "Maximum number of relationship hops to traverse. 1 = first-degree relationships only.",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 5
+        }
+      },
+      "required": ["resourceType", "resourceId"]
+    },
+    "GraphResponse": {
+      "type": "object",
+      "description": "Relationship graph rooted at the requested resource.",
+      "properties": {
+        "resourceType": {
+          "type": "string",
+          "description": "The starting resource type."
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "The starting resource identifier."
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "relationship": {
+                "type": "string",
+                "description": "Name of the relationship (derived from the schema property name).",
+                "examples": ["SecurityGroup", "Subnet", "IamInstanceProfile"]
+              },
+              "resourceType": {
+                "type": "string",
+                "description": "The related resource's type."
+              },
+              "resourceId": {
+                "type": "string",
+                "description": "The related resource's identifier."
+              },
+              "liveState": {
+                "type": ["object", "null"],
+                "description": "Live state of the related resource, if fetched."
+              }
+            },
+            "required": ["relationship", "resourceType", "resourceId"]
+          },
+          "description": "Relationship edges discovered from schema $ref definitions and resolved against live state."
+        }
+      },
+      "required": ["resourceType", "resourceId", "edges"]
+    }
+  }
+}

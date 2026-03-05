@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/brianterry/grip-protocol/spec/schemas/primitives/verify-request.json",
+  "title": "grip.verify Request/Response",
+  "description": "Schemas for the grip.verify primitive — the deterministic verification gate.",
+  "definitions": {
+    "VerifyRequest": {
+      "type": "object",
+      "description": "Request to evaluate a hypothesis against live state using loaded security rules.",
+      "properties": {
+        "resourceType": {
+          "type": "string",
+          "description": "The resource type being evaluated."
+        },
+        "resourceId": {
+          "type": ["string", "null"],
+          "description": "The resource identifier."
+        },
+        "liveState": {
+          "type": "object",
+          "description": "Current property values of the resource, fetched by grip.schema."
+        },
+        "rules": {
+          "description": "Security rules to evaluate, loaded by grip.security. Format is provider-native."
+        },
+        "hypothesis": {
+          "type": "string",
+          "description": "The security hypothesis being tested."
+        }
+      },
+      "required": ["resourceType", "liveState", "rules"]
+    },
+    "VerifyResponse": {
+      "type": "object",
+      "description": "Verification gate result containing the verdict and evidence chain.",
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "enum": ["VERIFIED", "VIOLATED", "UNVERIFIED"],
+          "description": "VERIFIED: all rules pass. VIOLATED: one or more rules failed. UNVERIFIED: no rules available for evaluation."
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "../verification-evidence.json" },
+          "description": "Evidence chain — one item per rule evaluated."
+        },
+        "rulesEvaluated": {
+          "type": "integer",
+          "description": "Total number of rules evaluated."
+        },
+        "violationsFound": {
+          "type": "integer",
+          "description": "Number of rules that returned VIOLATED."
+        }
+      },
+      "required": ["verdict", "evidence", "rulesEvaluated", "violationsFound"]
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/brianterry/grip-protocol/spec/schemas/finding.json",
+  "title": "GRIPFinding",
+  "description": "A verified security finding surfaced in the ACT step. Only findings that passed the verification gate with corroborated=true appear in the output. Each finding carries the full evidence chain linking the violated rule to the specific property and its current value.",
+  "type": "object",
+  "properties": {
+    "ruleId": {
+      "type": "string",
+      "description": "Identifier of the primary rule that detected the violation.",
+      "examples": ["S3_BUCKET_LOGGING_ENABLED", "S3_BUCKET_PUBLIC_READ_PROHIBITED"]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFORMATIONAL"],
+      "description": "Severity of the finding."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of the violation."
+    },
+    "propertyPath": {
+      "type": "string",
+      "description": "The resource property path affected by this finding. May be a full JSON pointer or a property name for absent-property violations.",
+      "examples": ["/Resources/GRIPResource/Properties/PublicAccessBlockConfiguration/BlockPublicAcls", "LoggingConfiguration"]
+    },
+    "actualValue": {
+      "description": "The current value of the affected property. 'NOT SET' indicates the property is absent from the resource."
+    },
+    "expected": {
+      "type": "string",
+      "description": "The remediation action or expected constraint."
+    },
+    "relatedRules": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Additional rule IDs that flagged the same property and were deduplicated into this finding. Present only when deduplication occurred."
+    }
+  },
+  "required": ["ruleId", "severity", "description"],
+  "additionalProperties": false
+}

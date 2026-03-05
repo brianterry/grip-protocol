@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/brianterry/grip-protocol/spec/schemas/session.json",
+  "title": "GRIPSession",
+  "description": "Session configuration established during the GRIP handshake. Defines the provider, region, account scope, and active compliance frameworks for all loop executions within the session.",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "type": "string",
+      "description": "Cloud provider identifier. The reference implementation uses 'aws-ccapi' for AWS Cloud Control API.",
+      "default": "aws-ccapi"
+    },
+    "region": {
+      "type": "string",
+      "description": "Cloud provider region for API calls.",
+      "examples": ["us-east-1", "eu-west-1"]
+    },
+    "accountId": {
+      "type": "string",
+      "description": "Cloud provider account identifier. For AWS, this is the 12-digit account ID."
+    },
+    "complianceFrameworks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Active compliance frameworks for this session. Rules are filtered to only those referenced by these frameworks. Empty array means all available rules are loaded.",
+      "default": [],
+      "examples": [["hipaa-security", "cis-aws-benchmark-level-1"]]
+    },
+    "securityRulesets": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Named rule sets loaded for this session.",
+      "default": []
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["create", "detect", "remediate"]
+      },
+      "description": "Operations enabled for this session.",
+      "default": ["create", "detect", "remediate"]
+    },
+    "gripVersion": {
+      "type": "string",
+      "description": "GRIP protocol version this session conforms to.",
+      "default": "0.1"
+    }
+  },
+  "required": ["provider", "region", "accountId"],
+  "additionalProperties": false
+}

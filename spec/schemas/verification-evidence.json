@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/brianterry/grip-protocol/spec/schemas/verification-evidence.json",
+  "title": "VerificationEvidence",
+  "description": "A single piece of evidence from the VERIFY step. Each evidence item represents the result of one rule evaluation against the resource's live state.",
+  "type": "object",
+  "properties": {
+    "source": {
+      "type": "string",
+      "description": "The verification source that produced this evidence. 'grip.guard/registry' for AWS Guard Rules Registry, 'grip.guard' for local Guard rules, 'grip.security' for heuristic fallback evaluation.",
+      "examples": ["grip.guard/registry", "grip.guard", "grip.security"]
+    },
+    "ruleId": {
+      "type": "string",
+      "description": "Identifier of the rule that was evaluated. For Guard registry rules, this is the rule name (e.g., S3_BUCKET_PUBLIC_READ_PROHIBITED). For heuristic rules, this is a custom identifier.",
+      "examples": ["S3_BUCKET_PUBLIC_READ_PROHIBITED", "AVD-AWS-0086"]
+    },
+    "ruleDescription": {
+      "type": "string",
+      "description": "Human-readable description of the rule or the violation it detected.",
+      "default": ""
+    },
+    "propertyPath": {
+      "type": "string",
+      "description": "The resource property path that was evaluated. For value-based violations, this is the full path to the non-compliant property. For absence-based violations, this is the name of the missing property.",
+      "default": "",
+      "examples": ["/Resources/GRIPResource/Properties/PublicAccessBlockConfiguration/BlockPublicAcls", "LoggingConfiguration"]
+    },
+    "actualValue": {
+      "description": "The current value of the evaluated property in the resource's live state. Set to 'NOT SET' when the property is absent from the resource.",
+      "examples": [false, true, "NOT SET", "AES256"]
+    },
+    "expected": {
+      "type": "string",
+      "description": "The expected constraint or remediation action. Describes what the property value should be to satisfy the rule.",
+      "default": "",
+      "examples": ["Set BlockPublicAcls to true in PublicAccessBlockConfiguration."]
+    },
+    "corroborated": {
+      "type": "boolean",
+      "description": "Whether this evidence represents a confirmed violation. true = the rule identified a non-compliant property value (VIOLATED). false = the rule passed (VERIFIED).",
+      "default": false
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFORMATIONAL"],
+      "description": "Severity level of the finding. INFORMATIONAL is used for rules that passed.",
+      "default": "INFORMATIONAL"
+    },
+    "relatedRuleIds": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Rule IDs that were deduplicated into this evidence item. Present when multiple rules flagged the same property path and were consolidated into a single finding.",
+      "default": []
+    }
+  },
+  "required": ["source", "ruleId", "corroborated"],
+  "additionalProperties": false
+}

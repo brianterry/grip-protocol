@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/brianterry/grip-protocol/spec/schemas/primitives/security-request.json",
+  "title": "grip.security Request/Response",
+  "description": "Schemas for the grip.security primitive — loads security rules filtered by resource type and compliance framework.",
+  "definitions": {
+    "SecurityRequest": {
+      "type": "object",
+      "description": "Request to load security rules for a resource type.",
+      "properties": {
+        "resourceType": {
+          "type": "string",
+          "description": "Cloud resource type to load rules for.",
+          "examples": ["AWS::S3::Bucket"]
+        },
+        "frameworks": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Compliance frameworks to filter by. Empty or omitted means all available rules.",
+          "examples": [["hipaa-security", "cis-aws-benchmark-level-1"]]
+        }
+      },
+      "required": ["resourceType"]
+    },
+    "SecurityResponse": {
+      "type": "object",
+      "description": "Response containing loaded security rules.",
+      "properties": {
+        "resourceType": {
+          "type": "string",
+          "description": "The resource type rules were loaded for."
+        },
+        "frameworks": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "The compliance frameworks that were applied as filters."
+        },
+        "ruleCount": {
+          "type": "integer",
+          "description": "Number of rules loaded."
+        },
+        "rules": {
+          "description": "Rule content in provider-native format. The format is implementation-specific (e.g., CFN Guard DSL for AWS, OPA/Rego for other providers)."
+        }
+      },
+      "required": ["resourceType", "ruleCount"]
+    }
+  }
+}
