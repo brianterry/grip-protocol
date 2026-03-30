@@ -11,7 +11,7 @@
         "resourceType": {
           "type": "string",
           "description": "Cloud resource type in provider-canonical format.",
-          "examples": ["AWS::S3::Bucket"]
+          "examples": ["AWS::S3::Bucket", "aws_s3_bucket"]
         },
         "resourceId": {
           "type": ["string", "null"],
@@ -26,7 +26,7 @@
     },
     "SchemaResponse": {
       "type": "object",
-      "description": "Response containing the resource schema, live state, relationship edges, and metadata.",
+      "description": "Response containing the resource schema, live state, relationship edges, and metadata. Includes property metadata required for Tier 0 schema validation.",
       "properties": {
         "resourceType": {
           "type": "string",
@@ -42,6 +42,20 @@
           "description": "JSON pointer paths to the primary identifier properties.",
           "examples": [["/properties/BucketName"]]
         },
+        "requiredProperties": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Property names required for resource creation. Used by Tier 0 schema validation to detect missing required properties.",
+          "default": [],
+          "examples": [["BucketName"], ["DBInstanceIdentifier", "Engine"]]
+        },
+        "readOnlyProperties": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "JSON pointer paths to properties computed by the provider (read-only). Used by Tier 0 schema validation to detect read-only property violations in CREATE operations.",
+          "default": [],
+          "examples": [["/properties/Arn", "/properties/DomainName"]]
+        },
         "relationships": {
           "type": "array",
           "items": {
@@ -52,7 +66,7 @@
             },
             "required": ["propertyPath", "referencedResourceType"]
           },
-          "description": "Relationship edges to other resource types, extracted from schema $ref values."
+          "description": "Relationship edges to other resource types, extracted from schema definitions."
         },
         "liveState": {
           "type": ["object", "null"],
@@ -63,7 +77,7 @@
           "description": "Number of properties defined in the resource schema."
         }
       },
-      "required": ["resourceType", "resourceSchema", "propertyCount"]
+      "required": ["resourceType", "resourceSchema", "propertyCount", "requiredProperties", "readOnlyProperties"]
     }
   }
 }

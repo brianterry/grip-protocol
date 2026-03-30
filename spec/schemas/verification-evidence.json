@@ -2,18 +2,24 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/brianterry/grip-protocol/spec/schemas/verification-evidence.json",
   "title": "VerificationEvidence",
-  "description": "A single piece of evidence from the VERIFY step. Each evidence item represents the result of one rule evaluation against the resource's live state.",
+  "description": "A single piece of evidence from the VERIFY step. Each evidence item represents the result of one rule evaluation against the resource properties or schema.",
   "type": "object",
   "properties": {
     "source": {
       "type": "string",
-      "description": "The verification source that produced this evidence. 'grip.guard/registry' for AWS Guard Rules Registry, 'grip.guard' for local Guard rules, 'grip.security' for heuristic fallback evaluation.",
-      "examples": ["grip.guard/registry", "grip.guard", "grip.security"]
+      "description": "The verification source that produced this evidence. 'grip.schema' for Tier 0 schema validation, 'grip.guard/registry' for Tier 1 provider rule registry, 'grip.guard' for Tier 1 local rules, 'grip.security' for Tier 2 heuristic fallback.",
+      "examples": ["grip.schema", "grip.guard/registry", "grip.guard", "grip.security"]
     },
     "ruleId": {
       "type": "string",
-      "description": "Identifier of the rule that was evaluated. For Guard registry rules, this is the rule name (e.g., S3_BUCKET_PUBLIC_READ_PROHIBITED). For heuristic rules, this is a custom identifier.",
-      "examples": ["S3_BUCKET_PUBLIC_READ_PROHIBITED", "AVD-AWS-0086"]
+      "description": "Identifier of the rule that was evaluated. For schema validation (Tier 0): SCHEMA_UNKNOWN_PROPERTY, SCHEMA_READ_ONLY_PROPERTY, SCHEMA_REQUIRED_PROPERTY, or SCHEMA_TYPE_MISMATCH. For policy rules (Tier 1): the rule name from the corpus. For heuristic (Tier 2): a custom identifier.",
+      "examples": [
+        "SCHEMA_UNKNOWN_PROPERTY",
+        "SCHEMA_READ_ONLY_PROPERTY",
+        "SCHEMA_REQUIRED_PROPERTY",
+        "SCHEMA_TYPE_MISMATCH",
+        "S3_BUCKET_PUBLIC_READ_PROHIBITED"
+      ]
     },
     "ruleDescription": {
       "type": "string",
@@ -22,19 +28,23 @@
     },
     "propertyPath": {
       "type": "string",
-      "description": "The resource property path that was evaluated. For value-based violations, this is the full path to the non-compliant property. For absence-based violations, this is the name of the missing property.",
+      "description": "The resource property path that was evaluated. Uses JSON pointer format (e.g., /properties/BucketName).",
       "default": "",
-      "examples": ["/Resources/GRIPResource/Properties/PublicAccessBlockConfiguration/BlockPublicAcls", "LoggingConfiguration"]
+      "examples": ["/properties/PublicAccessBlockConfiguration/BlockPublicAcls", "/properties/LoggingConfiguration"]
     },
     "actualValue": {
-      "description": "The current value of the evaluated property in the resource's live state. Set to 'NOT SET' when the property is absent from the resource.",
-      "examples": [false, true, "NOT SET", "AES256"]
+      "description": "The current value of the evaluated property. Set to 'NOT SET' when the property is absent. For schema validation, this is the proposed value that failed validation."
     },
     "expected": {
       "type": "string",
-      "description": "The expected constraint or remediation action. Describes what the property value should be to satisfy the rule.",
+      "description": "The expected constraint or remediation action. For schema violations, includes fuzzy-match suggestions when applicable.",
       "default": "",
-      "examples": ["Set BlockPublicAcls to true in PublicAccessBlockConfiguration."]
+      "examples": [
+        "Remove or rename this property. Did you mean: LoggingConfiguration?",
+        "Remove this property — it is set automatically by the provider.",
+        "Value must be of type 'string'.",
+        "Set BlockPublicAcls to true in PublicAccessBlockConfiguration."
+      ]
     },
     "corroborated": {
       "type": "boolean",
@@ -44,13 +54,13 @@
     "severity": {
       "type": "string",
       "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFORMATIONAL"],
-      "description": "Severity level of the finding. INFORMATIONAL is used for rules that passed.",
+      "description": "Severity level of the finding. Schema violations: HIGH for unknown/read-only, MEDIUM for required/type-mismatch. INFORMATIONAL for rules that passed.",
       "default": "INFORMATIONAL"
     },
     "relatedRuleIds": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Rule IDs that were deduplicated into this evidence item. Present when multiple rules flagged the same property path and were consolidated into a single finding.",
+      "description": "Rule IDs that were deduplicated into this evidence item. Present when multiple rules flagged the same property path and were consolidated.",
       "default": []
     }
   },

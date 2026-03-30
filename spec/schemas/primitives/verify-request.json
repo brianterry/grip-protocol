@@ -2,55 +2,90 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/brianterry/grip-protocol/spec/schemas/primitives/verify-request.json",
   "title": "grip.verify Request/Response",
-  "description": "Schemas for the grip.verify primitive — the deterministic verification gate.",
+  "description": "Schemas for the grip.verify primitive — the three-tier deterministic verification gate.",
   "definitions": {
     "VerifyRequest": {
       "type": "object",
-      "description": "Request to evaluate a hypothesis against live state using loaded security rules.",
+      "description": "Request to evaluate a hypothesis through the three-tier verification gate. Includes schema metadata for Tier 0 validation and rules for Tier 1 policy evaluation.",
       "properties": {
         "resourceType": {
           "type": "string",
           "description": "The resource type being evaluated."
         },
+        "operation": {
+          "type": "string",
+          "enum": ["CREATE", "DETECT", "REMEDIATE"],
+          "description": "The operation type. Affects which validation checks apply (e.g., read-only checks apply only to CREATE)."
+        },
         "resourceId": {
           "type": ["string", "null"],
-          "description": "The resource identifier."
+          "description": "The resource identifier. Required for DETECT/REMEDIATE, null for CREATE."
+        },
+        "proposedProperties": {
+          "type": "object",
+          "description": "Proposed resource properties for CREATE operations. Validated against the schema in Tier 0."
         },
         "liveState": {
+          "type": ["object", "null"],
+          "description": "Current property values of the resource, fetched by grip.schema. Used for DETECT/REMEDIATE operations."
+        },
+        "resourceSchema": {
           "type": "object",
-          "description": "Current property values of the resource, fetched by grip.schema."
+          "description": "The resource schema from grip.schema, containing property definitions and types."
+        },
+        "requiredProperties": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Property names required for creation, from grip.schema response.",
+          "default": []
+        },
+        "readOnlyProperties": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "JSON pointer paths to read-only properties, from grip.schema response.",
+          "default": []
         },
         "rules": {
-          "description": "Security rules to evaluate, loaded by grip.security. Format is provider-native."
+          "description": "Security rules to evaluate in Tier 1, loaded by grip.security. Format is provider-native."
         },
         "hypothesis": {
           "type": "string",
           "description": "The security hypothesis being tested."
         }
       },
-      "required": ["resourceType", "liveState", "rules"]
+      "required": ["resourceType", "operation", "resourceSchema"]
     },
     "VerifyResponse": {
       "type": "object",
-      "description": "Verification gate result containing the verdict and evidence chain.",
+      "description": "Verification gate result containing the verdict, evidence chain, and per-tier violation counts.",
       "properties": {
         "verdict": {
           "type": "string",
           "enum": ["VERIFIED", "VIOLATED", "UNVERIFIED"],
-          "description": "VERIFIED: all rules pass. VIOLATED: one or more rules failed. UNVERIFIED: no rules available for evaluation."
+          "description": "VERIFIED: all rules across all tiers pass. VIOLATED: one or more rules failed. UNVERIFIED: no rules available for evaluation."
         },
         "evidence": {
           "type": "array",
           "items": { "$ref": "../verification-evidence.json" },
-          "description": "Evidence chain — one item per rule evaluated."
+          "description": "Evidence chain — one item per rule evaluated across all tiers."
         },
         "rulesEvaluated": {
           "type": "integer",
-          "description": "Total number of rules evaluated."
+          "description": "Total number of rules evaluated across all tiers."
         },
         "violationsFound": {
           "type": "integer",
-          "description": "Number of rules that returned VIOLATED."
+          "description": "Total number of rules that returned VIOLATED across all tiers."
+        },
+        "schemaViolations": {
+          "type": "integer",
+          "description": "Number of Tier 0 (schema validation) violations.",
+          "default": 0
+        },
+        "policyViolations": {
+          "type": "integer",
+          "description": "Number of Tier 1 (policy rule) violations.",
+          "default": 0
         }
       },
       "required": ["verdict", "evidence", "rulesEvaluated", "violationsFound"]

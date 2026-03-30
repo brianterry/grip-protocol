@@ -44,7 +44,7 @@
     "gripVersion": {
       "type": "string",
       "description": "GRIP protocol version this session conforms to.",
-      "default": "0.1"
+      "default": "0.3"
     }
   },
   "required": ["provider", "region", "accountId"],
