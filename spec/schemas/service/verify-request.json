@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/brianterry/grip-protocol/spec/schemas/service/verify-request.json",
+  "title": "GRIP Service — Verify Request",
+  "description": "HTTP request body for POST /v1/verify. Submits an IaC artifact for verification. The service internally decomposes the artifact into resources, runs the full GRIP loop (GROUND → VERIFY → ACT) for each, and returns a flat list of findings.",
+  "definitions": {
+    "Artifact": {
+      "type": "object",
+      "description": "An Infrastructure-as-Code artifact submitted for verification. The service must understand the artifact format to parse resources, resolve references, and apply the appropriate verification backend.",
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["cloudformation", "terraform", "kubernetes", "bicep", "pulumi"],
+          "description": "IaC format of the artifact content. Determines which parser and verification backend the service uses."
+        },
+        "content": {
+          "type": "string",
+          "description": "Raw artifact content (YAML, HCL, JSON, etc.)."
+        }
+      },
+      "required": ["format", "content"],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "description": "Session identifier from POST /v1/sessions."
+    },
+    "artifact": {
+      "$ref": "#/definitions/Artifact"
+    }
+  },
+  "required": ["sessionId", "artifact"],
+  "additionalProperties": false
+}

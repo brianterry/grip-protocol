@@ -454,9 +454,157 @@ A compliant implementation satisfies this interface via provider-native APIs. Th
 
 ---
 
-## 6. Security Considerations
+## 6. Service Wire Format
 
-GRIP operates in read-only mode for DETECT operations. A conformant DETECT implementation MUST NOT write to cloud resources. CREATE and REMEDIATE operations require explicit user authorization before any write operation executes.
+### 6.1 Overview
+
+A GRIP verification service exposes the protocol over HTTP as a stateless JSON API. The service accepts IaC artifacts at the artifact level — the client sends a complete template or configuration, and the service internally decomposes it into resources, runs the full GRIP loop for each resource, and returns a flat list of standardized findings.
+
+This artifact-level interface ensures that the client does not need to understand the IaC format. The service handles parsing, resource extraction, schema grounding, and verification. The client sends content; the client gets findings back.
+
+```
+┌──────────────┐         ┌──────────────────┐         ┌──────────────────┐
+│ Orchestrator │  HTTP   │  GRIP Service    │  intern │  Verification    │
+│ (LLM agent,  │ ──────► │  /v1/sessions    │ ──────► │  Backend         │
+│  CLI, SDK)   │         │  /v1/verify      │         │  (Guard, Trivy,  │
+│              │ ◄────── │  /v1/health      │ ◄────── │   Checkov, OPA)  │
+│              │ findings│                  │ results │                  │
+└──────────────┘         └──────────────────┘         └──────────────────┘
+```
+
+### 6.2 Endpoints
+
+**`POST /v1/sessions`** — Open a verification session.
+
+Request body: [session-request.json](schemas/service/session-request.json)
+
+```json
+{
+  "protocolVersion": "0.3",
+  "frameworks": ["hipaa-security", "pci-dss"]
+}
+```
+
+Response body: [session-response.json](schemas/service/session-response.json)
+
+```json
+{
+  "sessionId": "sess-a1b2c3d4",
+  "protocolVersion": "0.3",
+  "frameworksAvailable": ["hipaa-security", "pci-dss", "cis-aws-benchmark-level-1"],
+  "frameworksActive": ["hipaa-security", "pci-dss"],
+  "coverage": {
+    "guard": { "resourceTypes": 67, "rules": 185 }
+  }
+}
+```
+
+**`POST /v1/verify`** — Verify an IaC artifact.
+
+Request body: [verify-request.json](schemas/service/verify-request.json)
+
+The request contains an `artifact` object with two fields: `format` (the IaC language) and `content` (the raw template/configuration text).
+
+```json
+{
+  "sessionId": "sess-a1b2c3d4",
+  "artifact": {
+    "format": "cloudformation",
+    "content": "AWSTemplateFormatVersion: '2010-09-09'\nResources:\n  DataBucket:\n    Type: AWS::S3::Bucket\n    Properties:\n      BucketName: my-data"
+  }
+}
+```
+
+Response body: [verify-response.json](schemas/service/verify-response.json)
+
+```json
+{
+  "runId": "run-e5f6g7h8",
+  "sessionId": "sess-a1b2c3d4",
+  "outcome": "VIOLATED",
+  "findings": [
+    {
+      "ruleId": "S3_BUCKET_LOGGING_ENABLED",
+      "severity": "HIGH",
+      "resource": "DataBucket",
+      "title": "S3 Bucket Logging must be enabled",
+      "remediation": "Set the S3 Bucket property LoggingConfiguration",
+      "property": "LoggingConfiguration",
+      "sourceLine": 0,
+      "referenceUrl": ""
+    }
+  ],
+  "stats": {
+    "totalChecks": 9,
+    "totalViolations": 1
+  },
+  "error": null
+}
+```
+
+**`GET /v1/health`** — Health check.
+
+Returns service status, protocol version, and supported artifact formats. No request body. Response format is not prescribed; implementations SHOULD include at minimum `status`, `protocolVersion`, and `artifactFormats`.
+
+### 6.3 Artifact Format
+
+The `artifact` object is the unit of input to the verify endpoint. It wraps raw IaC content with a format discriminator so the service can select the correct parser and verification backend.
+
+| Format | Value | Example Content |
+|---|---|---|
+| AWS CloudFormation | `cloudformation` | YAML or JSON template |
+| Terraform | `terraform` | HCL configuration |
+| Kubernetes | `kubernetes` | YAML manifests |
+| Bicep | `bicep` | Bicep template |
+| Pulumi | `pulumi` | Pulumi program output |
+
+A service MUST reject artifacts with unsupported formats with HTTP 400 and an explanatory error message. A service MAY support multiple formats.
+
+### 6.4 Service Finding
+
+The service finding (`ServiceFinding` in the JSON schema) is the universal unit of output. All verification backends normalize their results into this shape. The finding is flat — it includes the `resource` identifier because the service operates at the artifact level (multiple resources).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `ruleId` | string | **yes** | Scanner-native rule identifier |
+| `severity` | enum | **yes** | CRITICAL, HIGH, MEDIUM, LOW, INFO |
+| `resource` | string | **yes** | Resource identifier as it appears in the artifact |
+| `title` | string | no | Human-readable one-line summary |
+| `remediation` | string | no | Actionable guidance on how to fix |
+| `property` | string | no | Specific attribute or property path affected |
+| `sourceLine` | integer | no | Line number in the artifact (0 if unavailable) |
+| `referenceUrl` | string | no | URL to rule documentation or advisory |
+
+**Relationship to primitive-level Finding.** The service finding extends the primitive-level finding (Section 3, [finding.json](schemas/finding.json)) with `resource`, `sourceLine`, and `referenceUrl`. The primitive-level finding operates within a single resource evaluation; the service finding operates across all resources in an artifact.
+
+### 6.5 Backend Portability
+
+The service wire format is intentionally backend-agnostic. The same request/response shapes work regardless of the underlying verification engine. This was validated by building two reference service implementations:
+
+| | CloudFormation Service | Terraform Service |
+|---|---|---|
+| **Verification backend** | CloudFormation Guard + guardpy | Trivy |
+| **Artifact format** | `cloudformation` | `terraform` |
+| **Rule source** | AWS Guard Rules Registry | Aqua vulnerability database |
+| **Response shape** | Identical | Identical |
+
+An orchestrator that can call `POST /v1/verify` with an artifact and parse the `findings` array works with any GRIP service, regardless of the IaC format or verification backend. This enables a future SDK that is implementation-agnostic.
+
+### 6.6 Conformance
+
+A GRIP service implementation is wire-format conformant if:
+
+1. `POST /v1/sessions` accepts a `SessionRequest` and returns a `SessionResponse` with a valid `sessionId`
+2. `POST /v1/verify` accepts a `VerifyRequest` containing an `artifact` and returns a `VerifyResponse` with `outcome` and `findings`
+3. Every finding in the `findings` array contains at minimum `ruleId`, `severity`, and `resource`
+4. The `outcome` field is `VERIFIED` when `findings` is empty, `VIOLATED` when `findings` is non-empty, and `UNVERIFIED` when verification could not be performed
+5. The service returns HTTP 400 for unsupported artifact formats and HTTP 404 for unknown session IDs
+
+---
+
+## 7. Security Considerations
+
+GRIP operates in read-only mode for DETECT and artifact verification operations. A conformant DETECT implementation MUST NOT write to cloud resources. CREATE and REMEDIATE operations require explicit user authorization before any write operation executes.
 
 Live state fetched by grip.schema may contain sensitive configuration details including encryption key identifiers, network configuration, and access control settings. Implementations MUST handle live state data with access controls appropriate to the sensitivity of the target environment. Live state SHOULD NOT be logged in plaintext in production environments.
 
@@ -464,11 +612,20 @@ Security rules loaded by grip.security are sourced from external repositories (e
 
 ---
 
-## 7. Versioning
+## 8. Versioning
 
 GRIP versions follow semantic versioning. The v0.x series is pre-stable: primitive interfaces, request/response schemas, and conformance requirements may change between minor versions. Breaking changes will be documented in the CHANGELOG.
 
 Version 1.0 will establish a stable interface contract. After v1.0, breaking changes require a major version increment.
+
+### Changes from v0.3-draft to v0.3
+
+- Added Section 6: Service Wire Format — defines the HTTP API contract (`/v1/sessions`, `/v1/verify`, `/v1/health`)
+- Added `Artifact` abstraction: `{format, content}` wrapper for submitting IaC content regardless of language
+- Added `ServiceFinding` schema: universal flat finding with `ruleId`, `severity`, `resource`, `title`, `remediation`, `property`, `sourceLine`, `referenceUrl`
+- Added service-level JSON schemas: `service/session-request.json`, `service/session-response.json`, `service/verify-request.json`, `service/verify-response.json`
+- Added wire-format conformance checklist (Section 6.6)
+- Validated backend portability across CloudFormation (Guard) and Terraform (Trivy) reference implementations
 
 ### Changes from v0.1 to v0.3
 
@@ -486,7 +643,7 @@ Version 1.0 will establish a stable interface contract. After v1.0, breaking cha
 
 ---
 
-## 8. References
+## 9. References
 
 1. AWS CloudFormation Guard. https://github.com/aws-cloudformation/cloudformation-guard
 2. AWS Guard Rules Registry. https://github.com/aws-cloudformation/aws-guard-rules-registry

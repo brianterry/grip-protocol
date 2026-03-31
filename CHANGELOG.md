@@ -1,8 +1,17 @@
 # GRIP Protocol Changelog
 
-## v0.3 (2026-03-30)
+## v0.3 (2026-03-31)
 
-Three-tier verification, schema validation, and provider-agnostic framing.
+Three-tier verification, schema validation, provider-agnostic framing, and service wire format.
+
+### Service wire format (new)
+
+- **Section 6: Service Wire Format.** Defines the HTTP API contract for GRIP verification services. Three endpoints: `POST /v1/sessions` (open session), `POST /v1/verify` (verify artifact), `GET /v1/health` (health check).
+- **Artifact abstraction.** The verify endpoint accepts an `artifact` object with `format` (e.g. `cloudformation`, `terraform`) and `content` (raw IaC text). The service handles parsing and resource decomposition internally.
+- **ServiceFinding.** Universal flat finding schema with `ruleId`, `severity`, `resource`, `title`, `remediation`, `property`, `sourceLine`, `referenceUrl`. All backends normalize into this shape.
+- **Backend portability.** Wire format validated across CloudFormation (Guard backend) and Terraform (Trivy backend) reference implementations with identical request/response shapes.
+- **Wire-format conformance checklist.** Five requirements for a service to be wire-format conformant (Section 6.6).
+- **New JSON schemas:** `service/session-request.json`, `service/session-response.json`, `service/verify-request.json`, `service/verify-response.json`.
 
 ### Protocol changes
 

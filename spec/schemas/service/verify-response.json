@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/brianterry/grip-protocol/spec/schemas/service/verify-response.json",
+  "title": "GRIP Service — Verify Response",
+  "description": "HTTP response body for POST /v1/verify. Returns standardized findings from artifact-level verification. All backends (Guard, Trivy, Checkov, OPA, etc.) normalize their results into this shape.",
+  "definitions": {
+    "ServiceFinding": {
+      "type": "object",
+      "description": "A single security finding from artifact-level verification. This is the service wire format analog of the primitive-level Finding (spec/schemas/finding.json), extended with the resource identifier and source line for multi-resource artifacts.",
+      "properties": {
+        "ruleId": {
+          "type": "string",
+          "description": "Scanner-native rule identifier (e.g. 'S3_BUCKET_LOGGING_ENABLED', 'AWS-0086')."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"],
+          "description": "Severity level of the finding."
+        },
+        "resource": {
+          "type": "string",
+          "description": "Resource identifier as it appears in the artifact. For CloudFormation: the logical resource name (e.g. 'DataBucket'). For Terraform: the resource address (e.g. 'aws_s3_bucket.data')."
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable one-line summary of the finding.",
+          "default": ""
+        },
+        "remediation": {
+          "type": "string",
+          "description": "Actionable guidance on how to fix the finding.",
+          "default": ""
+        },
+        "property": {
+          "type": "string",
+          "description": "Specific attribute or property path affected.",
+          "default": ""
+        },
+        "sourceLine": {
+          "type": "integer",
+          "description": "Line number in the artifact where the finding was detected. 0 if unavailable.",
+          "default": 0
+        },
+        "referenceUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the rule documentation or advisory.",
+          "default": ""
+        }
+      },
+      "required": ["ruleId", "severity", "resource"],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "runId": {
+      "type": "string",
+      "description": "Unique identifier for this verification run."
+    },
+    "sessionId": {
+      "type": "string",
+      "description": "Session this run belongs to."
+    },
+    "outcome": {
+      "type": "string",
+      "enum": ["VERIFIED", "VIOLATED", "UNVERIFIED"],
+      "description": "Aggregate outcome across all resources. VERIFIED: no findings. VIOLATED: one or more findings. UNVERIFIED: no applicable rules or parse failure."
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/ServiceFinding" },
+      "description": "All findings (violations) detected across all resources in the artifact."
+    },
+    "stats": {
+      "type": "object",
+      "description": "Aggregate verification statistics.",
+      "properties": {
+        "totalChecks": {
+          "type": "integer",
+          "description": "Total number of checks evaluated across all resources."
+        },
+        "totalViolations": {
+          "type": "integer",
+          "description": "Total number of violations found (equals findings array length)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "error": {
+      "type": ["string", "null"],
+      "description": "Error message if verification could not complete (e.g. parse failure). Null on success.",
+      "default": null
+    }
+  },
+  "required": ["runId", "sessionId", "outcome", "findings"],
+  "additionalProperties": false
+}

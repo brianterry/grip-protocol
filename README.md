@@ -47,6 +47,8 @@ The two protocols coexist. MCP handles general tool access; GRIP handles cloud i
 
 JSON schemas for protocol data types: [spec/schemas/](spec/schemas/)
 
+JSON schemas for the service wire format (HTTP API): [spec/schemas/service/](spec/schemas/service/)
+
 ## Reference Implementation
 
 [github.com/brianterry/grip](https://github.com/brianterry/grip) — Python, AWS CloudFormation + Cloud Control API, CFN Guard via guardpy, AWS Guard Rules Registry (209 rules, 67 resource types, 50 compliance frameworks). GRIP-Security conformant.

@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/brianterry/grip-protocol/spec/schemas/service/session-response.json",
+  "title": "GRIP Service — Session Response",
+  "description": "HTTP response body for POST /v1/sessions. Confirms the session and reports available verification capabilities.",
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "description": "Unique session identifier. Used in all subsequent verify requests."
+    },
+    "protocolVersion": {
+      "type": "string",
+      "description": "GRIP protocol version this service implements."
+    },
+    "frameworksAvailable": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "All compliance frameworks this service supports."
+    },
+    "frameworksActive": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Frameworks activated for this session (intersection of requested and available)."
+    },
+    "coverage": {
+      "type": "object",
+      "description": "Backend-specific coverage metadata. Keys are backend names (e.g. 'guard', 'trivy'). Values are backend-specific objects describing rule counts, scanner versions, etc.",
+      "additionalProperties": true
+    }
+  },
+  "required": ["sessionId", "protocolVersion"],
+  "additionalProperties": false
+}
